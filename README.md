@@ -16,4 +16,19 @@ Why would we need yet another component for tracing students' solutions? What's 
 
 3. As far as I know, in Andes solutions subsystem there are no heuristics for checking whether student has tried to imitate a correct step. Maybe that is because students from other countries are not such hackers as Russian students are. But in Russia we need such heuristics.
 
+###Requirements
+
+You need to install SymPy: http://sympy.org/
+This project works with SymPy 0.7.2. Might work with newer versions.
+
+###Project structure
+
+1. Package "archive" contains Andes Physics Tutor algorithm of dependency checking (see files andes.py, test_andes.py). I realized it as it was described in [1] to examine its properties. "archive" also contains my old versions of the algorithm of dependency checking (my_method.py, deps.py, test_my_methods.py) They cover some cases of students' input but not all cases.
+
+2. My newer version of the algorithm of dependency checking consists of code from packages "common", "progress", "solutions". To see how it works you should examine tests.py in the project root. Some tests fail, but soon I'll make them pass. Stay tuned!
+
+###Literature
+
 1 - [J.A.Shapiro. An Algebra Subsystem for Diagnosing Students' Input in a Physics Tutoring System](http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=A4CDE3B32ABCB3250B3DF96A0612AF75?doi=10.1.1.87.9408&rep=rep1&type=pdf)
+
+
