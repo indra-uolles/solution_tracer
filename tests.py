@@ -34,7 +34,7 @@ class Test(unittest.TestCase):
         soltree = sb.build_solutions_tree(calc_relations, 'p(a,b)', ['a_1', 'a_2', 'b_1', 'b_2'])   
         self.assertItemsEqual(soltree, {0: [[1]], 1: [[2]], 2: [[4], [11]], 4: [[9, 10]], 5: [[7, 8]], 6: [[9, 10]], 11: [[5], [6]]}, 
         u"Тест 1 не пройден") 
-           
+            
         soltree = sb.build_solutions_tree(calc_relations, '(c,c)', ['a_1', 'a_2', 'b_1', 'b_2'])
         self.assertItemsEqual(sg.get_solutions(soltree), [[4, 9, 10], [11, 5, 7, 8], [11, 6, 9, 10]], u"Тест 2 не пройден") 
           

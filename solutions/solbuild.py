@@ -66,7 +66,6 @@ def get_branches(calc_relations, known_variables, fst_subtree, fst_paths):
 
         return new_paths, branches
 
-    #сюда дописать для случая (c,c)=c_1^2+c_2^2
     curr_paths = fst_paths
     branches = []
     
