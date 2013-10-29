@@ -45,7 +45,10 @@ def replace_notations_to_values(expression, notations, solution_point):
         
     expression = get_postprocessed(expression)
     for k,v in new_solution_point.iteritems():
-        expression = expression.replace(k, str(v))
+        replacement = str(v)
+        if '-' in replacement:
+            replacement = '(' + replacement + ')'
+        expression = expression.replace(k, replacement)
         
     return expression
 
