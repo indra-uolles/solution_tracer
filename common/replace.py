@@ -97,6 +97,9 @@ def get_postprocessed(expression):
     expression = r.sub(r'\1*\2', expression)
     expression = return_operations_names(expression)
     
+    #возведение в степень
+    expression = expression.replace("^","**")    
+    
     return expression
 
 def remove_operations_names(expression, notations):

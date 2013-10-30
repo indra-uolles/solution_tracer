@@ -8,6 +8,7 @@ import unittest
 from common import replace
 from solutions import calc
 from solutions import solbuild as sb, solget as sg
+from progress import progress
 
 class Test(unittest.TestCase):
 
@@ -50,45 +51,57 @@ class Test(unittest.TestCase):
             u"Тест 2 не пройден (не совпадают списки целевых величин)") 
             
         #construct formula from the specified part of a solution - 1
-        expressions = ['(c,c)=c_1^2+c_2^2']
-        tested = sg.construct_expressions(calc_relations, notations, solutions, '(c,c)', ['c_1', 'c_2'])
-        self.assertItemsEqual(expressions, tested, u"Тест 3.1 не пройден")
+        expression = sg.SystemExpression('(c,c)=c_1^2+c_2^2', [4])
+        tested = sg.construct_system_expressions(calc_relations, notations, solutions, '(c,c)', ['c_1', 'c_2'])
+        self.assertEquals(tested[0].get_expression(), expression.get_expression(), u"Тест 3.1 не пройден (не совпадают выражения)")
+        self.assertItemsEqual(tested[0].get_calc_ids(), expression.get_calc_ids(), u"Тест 3.1 не пройден(не совпадают списки id отношений вычислимости)")
         
         #construct formula from the specified part of a solution - 2
-        expressions = ['(c,c)=(a_1-b_1)^2+c_2^2']
-        tested = sg.construct_expressions(calc_relations, notations, solutions, '(c,c)', ['a_1', 'b_1'])
-        self.assertItemsEqual(expressions, tested, u"Тест 3.2 не пройден")
-        
+        expression = sg.SystemExpression('(c,c)=(a_1-b_1)^2+c_2^2', [4,9])
+        tested = sg.construct_system_expressions(calc_relations, notations, solutions, '(c,c)', ['a_1', 'b_1'])
+        self.assertEquals(tested[0].get_expression(), expression.get_expression(), u"Тест 3.2 не пройден (не совпадают выражения)")
+        self.assertItemsEqual(tested[0].get_calc_ids(), expression.get_calc_ids(), u"Тест 3.2 не пройден(не совпадают списки id отношений вычислимости)")
+     
         #simple check of student formula
         self.assertEqual(replace.replace_notations_to_values('(c,c)=(a_1-b_1)^2+(a_2-b_2)^2', 
-			replace.met_notations('(c,c)=(a_1-b_1)^2+(a_2-b_2)^2', notations), solution_point), '8=(1-3)^2+(2-4)^2', u"Тест 4 не пройден")
-        
+			replace.met_notations('(c,c)=(a_1-b_1)^2+(a_2-b_2)^2', notations), solution_point), '8=(1-3)**2+(2-4)**2', u"Тест 4 не пройден")
+         
         #check if student's step is correct and is not an imitation - 1 (student's step is correct)
         student_formula = '(c,c)=(a_1-b_1)^2+4'
         formula_left, formula_right = student_formula.split('=')
         sought_variable  = replace.met_notations(formula_left, notations)[0]
         variables = replace.met_notations(formula_right, notations)
-        system_expressions = sg.construct_expressions(calc_relations, notations, solutions, sought_variable, variables)
+        system_expressions = sg.construct_system_expressions(calc_relations, notations, solutions, sought_variable, variables)
         self.assertEqual(True, sg.is_correct(student_formula, system_expressions, notations, solution_point),
 			u"Тест 5 не пройден")
-        
+         
         #check if student's step is correct and is not an imitation - 2 (student's step is imitation)
         student_formula = '(c,c)=c_1+c_2+12'
         formula_left, formula_right = student_formula.split('=')
         sought_variable  = replace.met_notations(formula_left, notations)[0]
         variables = replace.met_notations(formula_right, notations)
-        system_expressions = sg.construct_expressions(calc_relations, notations, solutions, sought_variable, variables)
+        system_expressions = sg.construct_system_expressions(calc_relations, notations, solutions, sought_variable, variables)
         self.assertEqual(False, sg.is_correct(student_formula, system_expressions, notations, solution_point),
 			u"Тест 6 не пройден")  
-        
+         
         #check if student's step is correct and is not an imitation - 3 (student's step is correct)
         student_formula = '(c,c)=c_1^2+c_2^2'
         formula_left, formula_right = student_formula.split('=')
         sought_variable  = replace.met_notations(formula_left, notations)[0]
         variables = replace.met_notations(formula_right, notations)
-        system_expressions = sg.construct_expressions(calc_relations, notations, solutions, sought_variable, variables)
+        system_expressions = sg.construct_system_expressions(calc_relations, notations, solutions, sought_variable, variables)
         self.assertEqual(True, sg.is_correct(student_formula, system_expressions, notations, solution_point),
-			u"Тест 7 не пройден")     
+			u"Тест 7 не пройден")    
+        
+        #test progress calculator
+        prc =  progress.ProgressCalculator(calc_relations, notations, 'p(a,b)', ['a_1', 'a_2', 'b_1', 'b_2'], solution_point)
+        student_formula = '(c,c)=c_1^2+c_2^2'
+        prc.update(student_formula)
+        self.assertEqual(0.2, prc.get_progress(), u"Тест 8 не пройден")    
+        
+        student_formula = '(c,c)=(a_1-b_1)^2+(a_2-b_2)^2'
+        prc.update(student_formula)
+        self.assertEqual(0.6, prc.get_progress(), u"Тест 9 не пройден")    
    
         
 if __name__ == "__main__":

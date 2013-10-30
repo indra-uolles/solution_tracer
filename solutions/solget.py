@@ -11,7 +11,7 @@ def is_correct(student_formula, system_expressions, notations, solution_point):
        
     for system_expression in system_expressions:
         pattern                  = student_formula.split('=')[1]
-        expression               = system_expression.split('=')[1]
+        expression               = system_expression.get_expression().split('=')[1]
 
         pattern_notations_set    = set(replace.met_notations(pattern, notations))
         expression_notations_set = set(replace.met_notations(expression, notations))
@@ -25,8 +25,8 @@ def is_correct(student_formula, system_expressions, notations, solution_point):
 
     return False
 
-def construct_expressions(calc_relations, notations, solutions, sought_variable, variables):
-    expressions = []
+def construct_system_expressions(calc_relations, notations, solutions, sought_variable, variables):
+    system_expressions = []
     
     for solution in solutions:
         goal_variables = solution.get_goal_variables()
@@ -39,21 +39,36 @@ def construct_expressions(calc_relations, notations, solutions, sought_variable,
             notations_to_replace = copy.deepcopy(calc_relation.left_part)
          
             if expression_is_found(expression, notations, variables):
-                expressions.append(expression)
+                used_calc_ids = [calc_ids[start_pos]]
+                system_expressions.append(SystemExpression(expression, used_calc_ids))
                 
             else:
                 try:
                     #отвалится на "по с можно вычислить (с,c)". тут нужно вводить более сложную структуру - типа само пропускаем, как-то связываем дальше
-                    expression = construct_expression(calc_relations, notations, variables, notations_to_replace, expression, start_pos, calc_ids)
-                    expressions.append(expression)
+                    expression = get_system_expression(calc_relations, notations, variables, notations_to_replace, expression, start_pos, calc_ids)
+                    system_expressions.append(expression)
                 except:
                     pass
          
-        return expressions
+        return system_expressions
     
-def construct_expression(calc_relations, notations, variables, notations_to_replace, expression, start_pos, calc_ids):
+class SystemExpression(object):
+    
+    def __init__(self, expression, calc_ids):
+        self.expression = expression
+        self.calc_ids = calc_ids
+        
+    def get_expression(self):
+        return self.expression
+    
+    def get_calc_ids(self):
+        return self.calc_ids
+    
+def get_system_expression(calc_relations, notations, variables, notations_to_replace, expression, start_pos, calc_ids):
+    used_calc_ids = []
     for i in range(start_pos + 1, len(calc_ids)): 
         calc_relation   = util.get_calc_relation_by_id(calc_relations, calc_ids[i])
+        used_calc_ids.append(calc_ids[i])
         notation        = calc_relation.right_part
         expression_part = calc_relation.formula_text.split('=')[1]
         expression      = expression.replace(notation, '(' + expression_part + ')')
@@ -61,8 +76,9 @@ def construct_expression(calc_relations, notations, variables, notations_to_repl
         del notations_to_replace[pos]
         notations_to_replace.extend(calc_relation.left_part)
         if expression_is_found(expression, notations, variables):
-            return expression
-    return ''
+            used_calc_ids = [calc_ids[start_pos]] + used_calc_ids
+            return SystemExpression(expression, used_calc_ids)
+    return SystemExpression('', [])
         
 def expression_is_found(expression, notations, variables):
     
@@ -118,6 +134,12 @@ class Solution(object):
     
     def get_goal_variables(self):
         return self.goal_variables
+    
+    def set_goal_variables(self, goal_variables):
+        self.goal_variables = goal_variables
+    
+    def length(self):
+        return len(self.calc_ids)
 
 def get_new_steps(solutions_graph, calc_id):
     result = []
