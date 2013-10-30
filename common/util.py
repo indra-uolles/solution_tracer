@@ -21,7 +21,15 @@ class FormulasPreprocessor(object):
         for element in _calc_relations:
             element.right_part=self.replacements[element.right_part]
             element.left_part = map(lambda x: self.replacements[x], element.left_part)
-        return _calc_relations               
+            element.formula_text = replace.replace_notations(element.formula_text, self.notations)
+        return _calc_relations    
+    
+    def get_solution_point(self, solution_point): 
+        result_dict = {}
+        for k,v in solution_point.iteritems():
+            k = self.replacements[k] 
+            result_dict[k] = v
+        return result_dict 
     
 def get_calc_relation_by_id(_calc_relations, selected_id):
 
