@@ -9,6 +9,9 @@ import re
 from sympy import simplify
 from sympy.core import Symbol
 from sympy.core.numbers import Float
+from common import replace
+from sympy.unify.usympy import unify
+from sympy import symbols
 
 def check_expression (pattern, expression):
     '''
@@ -46,3 +49,31 @@ def check_expression (pattern, expression):
         except:
             return 0                 
     return 0
+
+def match_vector_coordinates(notations, vector_expression1, vector_expression2):
+    variables_names = replace.met_notations(vector_expression1, notations) + replace.met_notations(vector_expression2, notations)
+    variables = []
+    for var_name in variables_names:
+        locals()[var_name] = Symbol(var_name) 
+        variables.append(locals()[var_name])
+    variables = tuple(variables)
+    vector_expression1 = preprocess_vector_expression_for_unify(vector_expression1)
+    vector_expression2 = preprocess_vector_expression_for_unify(vector_expression2)
+    matches = next(unify(vector_expression1, vector_expression2, {}, variables))
+    return get_postprocessed_matches(matches)
+
+def preprocess_vector_expression_for_unify(vector_expression):
+    reObj = re.compile(r'(\(\[[^\[\]]+[;]+[^\[\]]+\]\))') 
+    #if expression is ([a_1;a_2])-([b_1;b_2]), it will find ([a_1;a_2]) and ([b_1;b_2])
+    vectors = reObj.findall(vector_expression)
+    for v in vectors:
+        new_v = 'ImmutableMatrix' + v
+        new_v = new_v.replace(';', ',')
+        vector_expression = vector_expression.replace(v, new_v)
+    return simplify(vector_expression)
+
+def get_postprocessed_matches(matches):
+    new_matches = {}
+    for k,v in matches.iteritems():
+        new_matches[str(k)]=str(v)
+    return new_matches

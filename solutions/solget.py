@@ -6,6 +6,7 @@ Created on 15.02.2013
 '''
 import copy
 from common import util, replace, equiv
+from solutions import solbuild
 
 def is_correct(student_formula, system_expressions, notations, solution_point):
        
@@ -25,32 +26,30 @@ def is_correct(student_formula, system_expressions, notations, solution_point):
 
     return False
 
-def construct_system_expressions(calc_relations, notations, solutions, sought_variable, variables):
+def construct_system_expressions(calc_relations, notations, solutions_groups, sought_variable, variables, vectors, initiators_set=set()):
     system_expressions = []
+    coordinates = solbuild.get_coordinates(calc_relations, vectors, initiators_set)
     
-    for solution in solutions:
-        goal_variables = solution.get_goal_variables()
-        calc_ids       = solution.get_calc_ids()
-        
-        if sought_variable in goal_variables:
-            start_pos            = goal_variables.index(sought_variable)
-            calc_relation        = util.get_calc_relation_by_id(calc_relations, calc_ids[start_pos])
-            expression           = calc_relation.formula_text
-            notations_to_replace = copy.deepcopy(calc_relation.left_part)
-         
-            if expression_is_found(expression, notations, variables):
-                used_calc_ids = [calc_ids[start_pos]]
-                system_expressions.append(SystemExpression(expression, used_calc_ids))
-                
-            else:
-                try:
-                    #отвалится на "по с можно вычислить (с,c)". тут нужно вводить более сложную структуру - типа само пропускаем, как-то связываем дальше
-                    expression = get_system_expression(calc_relations, notations, variables, notations_to_replace, expression, start_pos, calc_ids)
+    for group_of_solutions in solutions_groups:
+        for solution in group_of_solutions:
+            goal_variables = solution.get_goal_variables()
+            calc_ids       = solution.get_calc_ids()
+            
+            if sought_variable in goal_variables:
+                start_pos            = goal_variables.index(sought_variable)
+                calc_relation        = util.get_calc_relation_by_id(calc_relations, calc_ids[start_pos])
+                expression           = calc_relation.formula_text
+                notations_to_replace = copy.deepcopy(calc_relation.left_part)
+             
+                if expression_is_found(expression, notations, variables):
+                    used_calc_ids = [calc_ids[start_pos]]
+                    system_expressions.append(SystemExpression(expression, used_calc_ids))
+                    
+                else:
+                    expression = get_system_expression(calc_relations, notations, variables, solutions_groups, notations_to_replace, expression, start_pos, calc_ids, coordinates, vectors)
                     system_expressions.append(expression)
-                except:
-                    pass
          
-        return system_expressions
+    return system_expressions
     
 class SystemExpression(object):
     
@@ -64,7 +63,7 @@ class SystemExpression(object):
     def get_calc_ids(self):
         return self.calc_ids
     
-def get_system_expression(calc_relations, notations, variables, notations_to_replace, expression, start_pos, calc_ids):
+def get_system_expression(calc_relations, notations, variables, solutions_groups, notations_to_replace, expression, start_pos, calc_ids, coordinates, vectors):
     used_calc_ids = []
     for i in range(start_pos + 1, len(calc_ids)): 
         calc_relation   = util.get_calc_relation_by_id(calc_relations, calc_ids[i])
@@ -78,7 +77,39 @@ def get_system_expression(calc_relations, notations, variables, notations_to_rep
         if expression_is_found(expression, notations, variables):
             used_calc_ids = [calc_ids[start_pos]] + used_calc_ids
             return SystemExpression(expression, used_calc_ids)
+      
+    if set(notations_to_replace).issubset(coordinates):
+        vector_name = get_vector_name(calc_relations, notations_to_replace)
+        expr1 = get_vector_expr_from_coordinates(notations_to_replace)
+        expressions = []
+        
+        if len(vector_name) > 0:
+            vector_expressions = construct_system_expressions(calc_relations, notations, solutions_groups, vector_name, variables, vectors, notations_to_replace)   
+            expr1 = get_vector_expr_from_coordinates(notations_to_replace)
+            expr2 = vector_expressions[0].get_expression().split('=')[1]
+            matches = equiv.match_vector_coordinates(notations, expr1, expr2)
+            if (len(matches) > 0):
+                for k,v in matches.iteritems():
+                    expression = expression.replace(k, '(' + v + ')')
+                if expression_is_found(expression, notations, variables):
+                    used_calc_ids = [calc_ids[start_pos]] + used_calc_ids + vector_expressions[0].get_calc_ids()
+                    return SystemExpression(expression, used_calc_ids)
+                
     return SystemExpression('', [])
+
+def get_vector_name(calc_relations, notations):
+    for calc_rel in calc_relations:
+        #тут нужно усложнять
+        if (calc_rel.type == 'vector_def' and set(calc_rel.left_part).issubset(notations)):
+            return calc_rel.right_part
+    return ''
+
+def get_vector_expr_from_coordinates(notations):
+    expr = '(['
+    for notation in notations:
+        expr = expr + notation + ';'
+    expr = expr[:-1] + '])'
+    return expr
         
 def expression_is_found(expression, notations, variables):
     
