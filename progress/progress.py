@@ -17,8 +17,8 @@ class ProgressCalculator(object):
         self.notations = notations
         self.solution_point = fp.get_solution_point(solution_point)
                 
-        soltree = sb.build_solutions_tree(self.calc_relations, self.sought_variable, self.known_variables)
-        solutions = sg.get_solutions(soltree, self.calc_relations)
+        soltree = sb.build_solutions_tree(self.calc_relations, self.sought_variable, self.known_variables, [])
+        solutions = sg.get_solutions(soltree.get_data(), self.calc_relations)
         
         progress_rates = []
         for solution in solutions:

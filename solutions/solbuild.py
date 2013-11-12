@@ -6,15 +6,17 @@ Created on 15.02.2013
 from common import util
 from solutions import calc
 
-def build_solutions_tree(calc_relations, sought_variable, known_variables):
+def build_solutions_tree_requirements(calc_relations, sought_variable, known_variables, vectors, initiators_set=set()):
+    
+    coordinates = get_coordinates(calc_relations, vectors, initiators_set)
 
-    soltree = SolutionsTree()
+    soltree = SolutionsTree(sought_variable)
     fst_subtree, fst_paths = init_subtree_paths(
         calc_relations, sought_variable)
 
     if (fst_subtree.length() > 0):
 
-        branches = get_branches(calc_relations, known_variables, fst_subtree, fst_paths)
+        branches, requirements = get_branches_requirements(calc_relations, known_variables, fst_subtree, fst_paths, coordinates)
         subtrees, to_del = get_subtrees_deadends(calc_relations, branches, fst_subtree)
 
         if (len(to_del) > 0):
@@ -24,8 +26,21 @@ def build_solutions_tree(calc_relations, sought_variable, known_variables):
         for subtree in subtrees:
             soltree.update(subtree)
 
-    return soltree.get_data()
+    return soltree, requirements
 
+def get_coordinates(calc_relations, vectors, initiators_set=set()):
+    coordinates = []
+    for v in vectors:
+        for calc_rel in calc_relations:
+            if (calc_rel.right_part == v and calc_rel.type == 'vector_def' and is_addable_coordinate(initiators_set, calc_rel)):
+                    coordinates = coordinates + calc_rel.left_part
+    return set(coordinates)
+
+def is_addable_coordinate(initiators_set, calc_rel):
+    if ((len(initiators_set) > 0 and not(set(calc_rel.left_part).issubset(initiators_set))) or len(initiators_set) == 0):
+        return True
+    else:
+        return False
 
 def init_subtree_paths(calc_relations, sought_variable):
     branches, fst_paths = [], []
@@ -39,48 +54,53 @@ def init_subtree_paths(calc_relations, sought_variable):
     fst_subtree = SubTree(0, branches)   
     return fst_subtree, fst_paths
 
-def get_branches(calc_relations, known_variables, fst_subtree, fst_paths):
-    def update_paths_branches(calc_relations, curr_path, branches, known_variables):
+def get_branches_requirements(calc_relations, known_variables, fst_subtree, fst_paths, coordinates):
+    def update_paths_branches_requirements(calc_relations, curr_path, branches, known_variables, coordinates):
         new_paths = []
-        ignoreset = set(curr_path.ignorelist)
-        changed = False                  
+        curr_notations_set = set(curr_path.new_notation)
+        new_requirements = []
+        
+        if not(curr_notations_set.issubset(set(known_variables))):        
+            ignoreset = set(curr_path.ignorelist)
+            found = False
+    
+            for notation in curr_path.new_notation:
+                for calc_rel in calc_relations:
+                    if (not(calc_rel.right_part in curr_path.ignorelist) and not(set(calc_rel.left_part).issubset(ignoreset))
+                        and calc_rel.right_part == notation):
+                        new_paths.append(
+                            calc.Path(
+                                calc_rel.left_part, curr_path.ignorelist +
+                                curr_path.new_notation,
+                                curr_path.indexes + [calc_relations.index(calc_rel)], curr_path.id))
+                        branches.append(
+                            (curr_path.id, curr_path.indexes[len(curr_path.indexes) - 1], calc_rel.get_id()))
+                        found = True
+            if (found == False):
+                if (curr_notations_set.issubset(coordinates)):
+                    for calc_rel in calc_relations:
+                        if calc_rel.type == 'vector_def' and set(calc_rel.left_part).issubset(curr_notations_set):
+                            new_requirements.append(Requirement(curr_notations_set, calc_rel.right_part))
 
-        for notation in curr_path.new_notation:
-            for calc_rel in calc_relations:
-                if (not(calc_rel.right_part in curr_path.ignorelist) and not(set(calc_rel.left_part).issubset(ignoreset))
-                    and calc_rel.right_part == notation):
-                    new_paths.append(
-                        calc.Path(
-                            calc_rel.left_part, curr_path.ignorelist +
-                            curr_path.new_notation,
-                            curr_path.indexes + [calc_relations.index(calc_rel)], curr_path.id))
-                    branches.append(
-                        (curr_path.id, curr_path.indexes[len(curr_path.indexes) - 1], calc_rel.get_id()))
-                    changed = True
-
-        if changed == False:
-            #больше не можем продвинуться вперед, а нужных переменных не достигли. тогда это тупик, надо
-            #удалить соответствующие ветки
-            if (len(set(curr_path.new_notation).difference(set(known_variables))) > 0):
-                branches = filter(lambda x: x[0] != curr_path.id, branches)
-
-        return new_paths, branches
+        return new_paths, branches, new_requirements
 
     curr_paths = fst_paths
     branches = []
+    requirements = []
     
     while(len(curr_paths) > 0):
         new_paths = []
         for path in curr_paths:
-            paths, branches = update_paths_branches(
-                calc_relations, path, branches, known_variables)
+            paths, branches, new_requirements = update_paths_branches_requirements(
+                calc_relations, path, branches, known_variables, coordinates)
             new_paths = new_paths + paths
+            requirements = requirements + new_requirements
         curr_paths = new_paths
 
     # remove paths ids from each branch
     branches = map(lambda x: x[1:], branches)
 
-    return branches
+    return branches, requirements
 
 
 def get_subtrees_deadends(calc_relations, branches, fst_subtree):
@@ -155,8 +175,9 @@ class SubtreesDeadendsConstructor(object):
 
 class SolutionsTree(object):
 
-    def __init__(self):
+    def __init__(self, sought_variable):
         self.data = {}
+        self.sought_variable = sought_variable
 
     def update(self, subtree):
         self.data[subtree.get_head()] = subtree.get_branches()
@@ -191,3 +212,15 @@ class SubTree(object):
 
     def length(self):
         return len(self.branches)
+    
+class Requirement(object):
+    
+    def __init__(self, initiators_set, required):
+        self.initiators_set = initiators_set
+        self.required = required
+        
+    def get_initiators_set(self):
+        return self.initiators_set
+    
+    def get_required(self):
+        return self.required
